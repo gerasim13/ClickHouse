@@ -66,6 +66,7 @@ BlockIO InterpreterDropQuery::execute()
 
     String data_path = path + "data/" + database_name_escaped + "/";
     String metadata_path = path + "metadata/" + database_name_escaped + "/";
+    String database_metadata_path = path + "metadata/" + database_name_escaped + ".sql";
 
     auto database = context.tryGetDatabase(database_name);
     if (!database && !drop.if_exists)
@@ -163,6 +164,7 @@ BlockIO InterpreterDropQuery::execute()
 
         Poco::File(data_path).remove(false);
         Poco::File(metadata_path).remove(false);
+        Poco::File(database_metadata_path).remove(false);
     }
 
     return {};
