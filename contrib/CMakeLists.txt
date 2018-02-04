@@ -88,6 +88,14 @@ if (USE_INTERNAL_RDKAFKA_LIBRARY)
     add_subdirectory (librdkafka)
 endif ()
 
+if (USE_MONGO_DRIVER)
+    add_subdirectory (mongo-cxx-driver)
+endif ()
+
+if (USE_INTERNAL_LZ4_LIBRARY)
+    add_subdirectory (lz4-cmake)
+endif ()
+
 if (USE_INTERNAL_CAPNP_LIBRARY)
     set(BUILD_TESTING 0 CACHE INTERNAL "")
     set (_save ${CMAKE_CXX_EXTENSIONS})
