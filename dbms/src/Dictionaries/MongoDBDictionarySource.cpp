@@ -9,6 +9,7 @@
     #include <Poco/MongoDB/Database.h>
     #include <Poco/MongoDB/Cursor.h>
     #include <Poco/MongoDB/Array.h>
+    #include <Poco/MongoDB/ObjectId.h>
 #pragma GCC diagnostic pop
 
 #include <Poco/Version.h>
@@ -260,7 +261,14 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
                     break;
 
                 case AttributeUnderlyingType::String:
-                    key.add(attr.second.name, get<String>((*key_columns[attr.first])[row_idx]));
+                    if (attr.second.injective)
+                    {
+                        key.add(attr.second.name, get<Poco::MongoDB::ObjectId>((*key_columns[attr.first])[row_idx]));
+                    }
+                    else
+                    {
+                        key.add(attr.second.name, get<String>((*key_columns[attr.first])[row_idx]));
+                    }
                     break;
             }
         }
