@@ -229,32 +229,7 @@ BlockInputStreamPtr MongoDBDictionarySource::loadIds(const std::vector<UInt64> &
 
 template<typename T> T keyValue(const ColumnPtr & first, const DictionaryAttribute second, int row_idx)
 {
-    switch (second.underlying_type)
-    {
-        case AttributeUnderlyingType::UInt8:
-        case AttributeUnderlyingType::UInt16:
-        case AttributeUnderlyingType::UInt32:
-        case AttributeUnderlyingType::UInt64:
-        case AttributeUnderlyingType::UInt128:
-        case AttributeUnderlyingType::Int8:
-        case AttributeUnderlyingType::Int16:
-        case AttributeUnderlyingType::Int32:
-        case AttributeUnderlyingType::Int64:
-            return Int32(first->get64(row_idx));
 
-        case AttributeUnderlyingType::Float32:
-        case AttributeUnderlyingType::Float64:
-            return applyVisitor(FieldVisitorConvertToNumber<Float64>(), (*first)[row_idx]);
-
-        case AttributeUnderlyingType::String:
-            if (second.injective)
-            {
-                String _str(get<String>((*first)[row_idx]));
-                Poco::MongoDB::ObjectId::Ptr _id(new Poco::MongoDB::ObjectId(_str));
-                return _id;
-            }
-            return get<String>((*first)[row_idx]);
-    }
 }
 
 
@@ -290,7 +265,39 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
                 /// Insert actual value
                 else
                 {
-                    nested_keys->add(*it, value);
+                    switch (attr.second.underlying_type)
+                    {
+                        case AttributeUnderlyingType::UInt8:
+                        case AttributeUnderlyingType::UInt16:
+                        case AttributeUnderlyingType::UInt32:
+                        case AttributeUnderlyingType::UInt64:
+                        case AttributeUnderlyingType::UInt128:
+                        case AttributeUnderlyingType::Int8:
+                        case AttributeUnderlyingType::Int16:
+                        case AttributeUnderlyingType::Int32:
+                        case AttributeUnderlyingType::Int64:
+                            nested_keys->add(*it, Int32(attr.first->get64(row_idx)));
+                            break;
+
+                        case AttributeUnderlyingType::Float32:
+                        case AttributeUnderlyingType::Float64:
+                            nested_keys->add(*it, applyVisitor(FieldVisitorConvertToNumber<Float64>(), (*attr.first)[row_idx]));
+                            break;
+
+                        case AttributeUnderlyingType::String:
+                            /// Convert string to ObjectID
+                            if (attr.second.injective)
+                            {
+                                String _str(get<String>((*attr.first)[row_idx]));
+                                Poco::MongoDB::ObjectId::Ptr _id(new Poco::MongoDB::ObjectId(_str));
+                                nested_keys->add(*it, _id);
+                            }
+                            else
+                            {
+                                nested_keys->add(*it, get<String>((*attr.first)[row_idx]));
+                            }
+                            break;
+                    }
                 }
             }
             key.addElement(nested_keys);
