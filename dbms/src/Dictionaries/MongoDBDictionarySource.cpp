@@ -242,59 +242,53 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
 
         for (const auto attr : ext::enumerate(*dict_struct.key))
         {
-            /// Handling nested keys, like document._id
-            Poco::StringTokenizer tokenizer(attr.second.name, ".", Poco::StringTokenizer::Options::TOK_TRIM);
-            auto & nested_keys = key.addNewDocument(*tokenizer.begin());
-
-            for (auto it = tokenizer.begin(); it != tokenizer.end(); it++)
+            switch (attr.second.underlying_type)
             {
-                /// Insert nested document
-                if (std::next(it) != tokenizer.end())
-                {
-                    nested_keys = nested_keys.addNewDocument(*it);
-                }
-                /// Insert actual value
-                else
-                {
-                    switch (attr.second.underlying_type)
+                case AttributeUnderlyingType::UInt8:
+                case AttributeUnderlyingType::UInt16:
+                case AttributeUnderlyingType::UInt32:
+                case AttributeUnderlyingType::UInt64:
+                case AttributeUnderlyingType::UInt128:
+                case AttributeUnderlyingType::Int8:
+                case AttributeUnderlyingType::Int16:
+                case AttributeUnderlyingType::Int32:
+                case AttributeUnderlyingType::Int64:
+                    key.add(attr.second.name, Int32(key_columns[attr.first]->get64(row_idx)));
+                    break;
+
+                case AttributeUnderlyingType::Float32:
+                case AttributeUnderlyingType::Float64:
+                    key.add(attr.second.name, applyVisitor(FieldVisitorConvertToNumber<Float64>(), (*key_columns[attr.first])[row_idx]));
+                    break;
+
+                case AttributeUnderlyingType::String:
+                    /// Convert string to ObjectID
+                    if (attr.second.injective)
                     {
-                        case AttributeUnderlyingType::UInt8:
-                        case AttributeUnderlyingType::UInt16:
-                        case AttributeUnderlyingType::UInt32:
-                        case AttributeUnderlyingType::UInt64:
-                        case AttributeUnderlyingType::UInt128:
-                        case AttributeUnderlyingType::Int8:
-                        case AttributeUnderlyingType::Int16:
-                        case AttributeUnderlyingType::Int32:
-                        case AttributeUnderlyingType::Int64:
-                            nested_keys.add(*it, Int32(key_columns[attr.first]->get64(row_idx)));
-                            break;
-
-                        case AttributeUnderlyingType::Float32:
-                        case AttributeUnderlyingType::Float64:
-                            nested_keys.add(*it, applyVisitor(FieldVisitorConvertToNumber<Float64>(), (*key_columns[attr.first])[row_idx]));
-                            break;
-
-                        case AttributeUnderlyingType::String:
-                            /// Convert string to ObjectID
-                            if (attr.second.injective)
-                            {
-                                String _str(get<String>((*key_columns[attr.first])[row_idx]));
-                                Poco::MongoDB::ObjectId::Ptr _id(new Poco::MongoDB::ObjectId(_str));
-                                nested_keys.add(*it, _id);
-                            }
-                            else
-                            {
-                                nested_keys.add(*it, get<String>((*key_columns[attr.first])[row_idx]));
-                            }
-                            break;
+                        String _str(get<String>((*key_columns[attr.first])[row_idx]));
+                        Poco::MongoDB::ObjectId::Ptr _id(new Poco::MongoDB::ObjectId(_str));
+                        key.add(attr.second.name, _id);
                     }
-                }
+                    else
+                    {
+                        key.add(attr.second.name, get<String>((*key_columns[attr.first])[row_idx]));
+                    }
+                    break;
             }
         }
     }
 
-    cursor->query().selector().add("$or", keys_array);
+    /// If more than one key we should use $or
+    if (keys_array->size() > 1)
+    {
+        cursor->query().selector().add("$or", keys_array);
+    }
+    else
+    {
+        cursor->query().selector().addElement(keys_array->get(0));
+    }
+
+
     return std::make_shared<MongoDBBlockInputStream>(
             connection, std::move(cursor), sample_block, max_block_size);
 }
