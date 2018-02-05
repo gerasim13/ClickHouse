@@ -242,13 +242,12 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
 
         for (const auto attr : ext::enumerate(*dict_struct.key))
         {
-            /// Handling nested keys, like profiles._id
+            /// Handling nested keys, like document._id
             Poco::StringTokenizer tokenizer(attr.second.name, ".", Poco::StringTokenizer::Options::TOK_TRIM);
             auto & nested_keys = key.addNewDocument(*tokenizer.begin());
 
             for (auto it = tokenizer.begin(); it != tokenizer.end(); it++)
             {
-
                 /// Insert nested document
                 if (std::next(it) != tokenizer.end())
                 {
