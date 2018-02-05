@@ -263,8 +263,9 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
                 case AttributeUnderlyingType::String:
                     if (attr.second.injective)
                     {
-                        String _id(get<String>((*key_columns[attr.first])[row_idx]));
-                        key.add(attr.second.name, Poco::MongoDB::ObjectId(_id));
+                        String _str(get<String>((*key_columns[attr.first])[row_idx]));
+                        Poco::MongoDB::ObjectId::Ptr _id(new Poco::MongoDB::ObjectId(_str));
+                        key.add(attr.second.name, _id);
                     }
                     else
                     {
@@ -275,10 +276,16 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
         }
     }
 
-    cursor->query().selector().add("$or", keys_array);
+    if (keys_array->size() > 1)
+    {
+        cursor->query().selector().add("$or", keys_array);
+    }
+    else
+    {
+        cursor->query().selector().addElement(keys_array->get(0));
+    }
 
-    return std::make_shared<MongoDBBlockInputStream>(
-        connection, std::move(cursor), sample_block, max_block_size);
+    return std::make_shared<MongoDBBlockInputStream>(connection, std::move(cursor), sample_block, max_block_size);
 }
 
 
