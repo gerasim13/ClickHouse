@@ -263,9 +263,8 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
                 case AttributeUnderlyingType::String:
                     if (attr.second.injective)
                     {
-                        String _str(get<String>((*key_columns[attr.first])[row_idx]));
-                        Poco::MongoDB::ObjectId _id(_str);
-                        key.add(attr.second.name, Poco::MongoDB::ObjectId::Ptr(&_id));
+                        String _id(get<String>((*key_columns[attr.first])[row_idx]));
+                        key.add(attr.second.name, Poco::MongoDB::ObjectId(_id));
                     }
                     else
                     {
