@@ -3,7 +3,7 @@
 	url = https://github.com/ClickHouse-Extras/zookeeper.git
 [submodule "contrib/poco"]
 	path = contrib/poco
-url=http://gitlab.molodejj.tv/clibs/poco.git
+url=git@github.com:gerasim13/poco.git
 [submodule "contrib/zstd"]
 	path = contrib/zstd
 	url = https://github.com/facebook/zstd.git
