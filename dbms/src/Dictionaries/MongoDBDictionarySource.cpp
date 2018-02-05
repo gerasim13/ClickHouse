@@ -243,16 +243,16 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
         for (const auto attr : ext::enumerate(*dict_struct.key))
         {
             /// Handling nested keys, like profiles._id
-            Poco::StringTokenizer tokenizer(attr.second.name, ".");
-            Poco::MongoDB::Document::Ptr nested_keys(new Poco::MongoDB::Document);
+            Poco::StringTokenizer tokenizer(attr.second.name, ".", Poco::StringTokenizer::Options::TOK_TRIM);
+            auto & nested_keys = key.addNewDocument(*tokenizer.begin());
+
             for (auto it = tokenizer.begin(); it != tokenizer.end(); it++)
             {
+
                 /// Insert nested document
                 if (std::next(it) != tokenizer.end())
                 {
-                    Poco::MongoDB::Document::Ptr _key(new Poco::MongoDB::Document);
-                    nested_keys->add(*it, _key);
-                    nested_keys = _key;
+                    nested_keys = nested_keys.addNewDocument(*it);
                 }
                 /// Insert actual value
                 else
@@ -268,12 +268,12 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
                         case AttributeUnderlyingType::Int16:
                         case AttributeUnderlyingType::Int32:
                         case AttributeUnderlyingType::Int64:
-                            nested_keys->add(*it, Int32(key_columns[attr.first]->get64(row_idx)));
+                            nested_keys.add(*it, Int32(key_columns[attr.first]->get64(row_idx)));
                             break;
 
                         case AttributeUnderlyingType::Float32:
                         case AttributeUnderlyingType::Float64:
-                            nested_keys->add(*it, applyVisitor(FieldVisitorConvertToNumber<Float64>(), (*key_columns[attr.first])[row_idx]));
+                            nested_keys.add(*it, applyVisitor(FieldVisitorConvertToNumber<Float64>(), (*key_columns[attr.first])[row_idx]));
                             break;
 
                         case AttributeUnderlyingType::String:
@@ -282,17 +282,16 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
                             {
                                 String _str(get<String>((*key_columns[attr.first])[row_idx]));
                                 Poco::MongoDB::ObjectId::Ptr _id(new Poco::MongoDB::ObjectId(_str));
-                                nested_keys->add(*it, _id);
+                                nested_keys.add(*it, _id);
                             }
                             else
                             {
-                                nested_keys->add(*it, get<String>((*key_columns[attr.first])[row_idx]));
+                                nested_keys.add(*it, get<String>((*key_columns[attr.first])[row_idx]));
                             }
                             break;
                     }
                 }
             }
-            key.addElement(nested_keys);
         }
     }
 
