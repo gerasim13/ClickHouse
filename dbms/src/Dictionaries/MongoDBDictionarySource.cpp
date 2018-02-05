@@ -227,12 +227,6 @@ BlockInputStreamPtr MongoDBDictionarySource::loadIds(const std::vector<UInt64> &
 }
 
 
-template<typename T> T keyValue(const ColumnPtr & first, const DictionaryAttribute second, int row_idx)
-{
-
-}
-
-
 BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
     const Columns & key_columns, const std::vector<size_t> & requested_rows)
 {
@@ -248,8 +242,6 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
 
         for (const auto attr : ext::enumerate(*dict_struct.key))
         {
-            auto value = keyValue(key_columns[attr.first], attr.second, row_idx);
-
             /// Handling nested keys, like profiles._id
             Poco::StringTokenizer tokenizer(attr.second.name, ".");
             Poco::MongoDB::Document::Ptr nested_keys(new Poco::MongoDB::Document);
