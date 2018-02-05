@@ -2,6 +2,7 @@
 #if Poco_MongoDB_FOUND
 #include <Poco/Util/AbstractConfiguration.h>
 #include <Poco/MD5Engine.h>
+#include <Poco/StringTokenizer.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -226,6 +227,37 @@ BlockInputStreamPtr MongoDBDictionarySource::loadIds(const std::vector<UInt64> &
 }
 
 
+template<typename T> T keyValue(const ColumnPtr & first, const DictionaryAttribute second, int row_idx)
+{
+    switch (second.underlying_type)
+    {
+        case AttributeUnderlyingType::UInt8:
+        case AttributeUnderlyingType::UInt16:
+        case AttributeUnderlyingType::UInt32:
+        case AttributeUnderlyingType::UInt64:
+        case AttributeUnderlyingType::UInt128:
+        case AttributeUnderlyingType::Int8:
+        case AttributeUnderlyingType::Int16:
+        case AttributeUnderlyingType::Int32:
+        case AttributeUnderlyingType::Int64:
+            return Int32(first->get64(row_idx));
+
+        case AttributeUnderlyingType::Float32:
+        case AttributeUnderlyingType::Float64:
+            return applyVisitor(FieldVisitorConvertToNumber<Float64>(), (*first)[row_idx]);
+
+        case AttributeUnderlyingType::String:
+            if (second.injective)
+            {
+                String _str(get<String>((*first)[row_idx]));
+                Poco::MongoDB::ObjectId::Ptr _id(new Poco::MongoDB::ObjectId(_str));
+                return _id;
+            }
+            return get<String>((*first)[row_idx]);
+    }
+}
+
+
 BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
     const Columns & key_columns, const std::vector<size_t> & requested_rows)
 {
@@ -241,38 +273,27 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
 
         for (const auto attr : ext::enumerate(*dict_struct.key))
         {
-            switch (attr.second.underlying_type)
+            auto value = keyValue(key_columns[attr.first], attr.second, row_idx);
+
+            /// Handling nested keys, like profiles._id
+            Poco::StringTokenizer tokenizer(attr.second.name, ".");
+            Poco::MongoDB::Document::Ptr nested_keys(new Poco::MongoDB::Document);
+            for (auto it = tokenizer.begin(); it != tokenizer.end(); it++)
             {
-                case AttributeUnderlyingType::UInt8:
-                case AttributeUnderlyingType::UInt16:
-                case AttributeUnderlyingType::UInt32:
-                case AttributeUnderlyingType::UInt64:
-                case AttributeUnderlyingType::UInt128:
-                case AttributeUnderlyingType::Int8:
-                case AttributeUnderlyingType::Int16:
-                case AttributeUnderlyingType::Int32:
-                case AttributeUnderlyingType::Int64:
-                    key.add(attr.second.name, Int32(key_columns[attr.first]->get64(row_idx)));
-                    break;
-
-                case AttributeUnderlyingType::Float32:
-                case AttributeUnderlyingType::Float64:
-                    key.add(attr.second.name, applyVisitor(FieldVisitorConvertToNumber<Float64>(), (*key_columns[attr.first])[row_idx]));
-                    break;
-
-                case AttributeUnderlyingType::String:
-                    if (attr.second.injective)
-                    {
-                        String _str(get<String>((*key_columns[attr.first])[row_idx]));
-                        Poco::MongoDB::ObjectId::Ptr _id(new Poco::MongoDB::ObjectId(_str));
-                        key.add(attr.second.name, _id);
-                    }
-                    else
-                    {
-                        key.add(attr.second.name, get<String>((*key_columns[attr.first])[row_idx]));
-                    }
-                    break;
+                /// Insert nested document
+                if (std::next(it) != tokenizer.end())
+                {
+                    Poco::MongoDB::Document::Ptr _key(new Poco::MongoDB::Document);
+                    nested_keys->add(*it, _key);
+                    nested_keys = _key;
+                }
+                /// Insert actual value
+                else
+                {
+                    nested_keys->add(*it, value);
+                }
             }
+            key.addElement(nested_keys);
         }
     }
 
