@@ -265,7 +265,7 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
                     {
                         String id(get<String>((*key_columns[attr.first])[row_idx]));
                         String convertId;
-                        for(int i=0; i<id.length(); i+=2)
+                        for(int i=0; i<(int)id.length(); i+=2)
                             convertId.push_back((char)strtoul(id.substr(i, 2).c_str(), 0, 16));
 
                         Poco::MongoDB::ObjectId _id(convertId);
