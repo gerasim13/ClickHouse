@@ -276,25 +276,25 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
                         case AttributeUnderlyingType::Int16:
                         case AttributeUnderlyingType::Int32:
                         case AttributeUnderlyingType::Int64:
-                            nested_keys->add(*it, Int32(attr.first->get64(row_idx)));
+                            nested_keys->add(*it, Int32(key_columns[attr.first]->get64(row_idx)));
                             break;
 
                         case AttributeUnderlyingType::Float32:
                         case AttributeUnderlyingType::Float64:
-                            nested_keys->add(*it, applyVisitor(FieldVisitorConvertToNumber<Float64>(), (*attr.first)[row_idx]));
+                            nested_keys->add(*it, applyVisitor(FieldVisitorConvertToNumber<Float64>(), (*key_columns[attr.first])[row_idx]));
                             break;
 
                         case AttributeUnderlyingType::String:
                             /// Convert string to ObjectID
                             if (attr.second.injective)
                             {
-                                String _str(get<String>((*attr.first)[row_idx]));
+                                String _str(get<String>((*key_columns[attr.first])[row_idx]));
                                 Poco::MongoDB::ObjectId::Ptr _id(new Poco::MongoDB::ObjectId(_str));
                                 nested_keys->add(*it, _id);
                             }
                             else
                             {
-                                nested_keys->add(*it, get<String>((*attr.first)[row_idx]));
+                                nested_keys->add(*it, get<String>((*key_columns[attr.first])[row_idx]));
                             }
                             break;
                     }
