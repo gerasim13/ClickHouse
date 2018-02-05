@@ -3,9 +3,6 @@ stages:
   - build
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  NEXUS_USER: admin
-  NEXUS_PASSWORD: YPUVpFdmLz98HC
-  NEXUS_HOST: nexus.start.film
 builder:
   stage: builder
   when: manual

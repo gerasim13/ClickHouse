@@ -276,16 +276,9 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
         }
     }
 
-    if (keys_array->size() > 1)
-    {
-        cursor->query().selector().add("$or", keys_array);
-    }
-    else
-    {
-        cursor->query().selector().addElement(keys_array->get(0));
-    }
-
-    return std::make_shared<MongoDBBlockInputStream>(connection, std::move(cursor), sample_block, max_block_size);
+    cursor->query().selector().add("$or", keys_array);
+    return std::make_shared<MongoDBBlockInputStream>(
+            connection, std::move(cursor), sample_block, max_block_size);
 }
 
 
