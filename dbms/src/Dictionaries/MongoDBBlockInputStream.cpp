@@ -13,6 +13,7 @@
     #include <Poco/MongoDB/ObjectId.h>
 #pragma GCC diagnostic pop
 
+#include <Poco/StringTokenizer.h>
 #include <Dictionaries/DictionaryStructure.h>
 #include <Dictionaries/MongoDBBlockInputStream.h>
 #include <Columns/ColumnString.h>
@@ -177,9 +178,31 @@ Block MongoDBBlockInputStream::readImpl()
                 const Poco::MongoDB::Element::Ptr value = document->get(name);
 
                 if (value.isNull() || value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::NullValue>::TypeId)
+                {
                     insertDefaultValue(*columns[idx], *description.sample_columns[idx]);
+                }
+                else if (value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::Document::Ptr>::TypeId)
+                {
+                    const auto & nested = static_cast<const Poco::MongoDB::ConcreteElement<Poco::MongoDB::Document::Ptr> &>(value).value();
+
+                    /// Handling nested keys, like document._id
+                    Poco::StringTokenizer tokenizer(name, ".", Poco::StringTokenizer::Options::TOK_TRIM);
+                    for (auto it = tokenizer.begin(); it != tokenizer.end(); it++)
+                    {
+                        if (std::next(it) == tokenizer.end())
+                        {
+                            insertValue(*columns[idx], description.types[idx], *nested, name);
+                        }
+                        else
+                        {
+                            nested = nested->get(*it);
+                        }
+                    }
+                }
                 else
+                {
                     insertValue(*columns[idx], description.types[idx], *value, name);
+                }
             }
         }
 

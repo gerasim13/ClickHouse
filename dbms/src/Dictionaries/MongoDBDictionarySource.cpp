@@ -1,8 +1,6 @@
 #include <Common/config.h>
 #if Poco_MongoDB_FOUND
 #include <Poco/Util/AbstractConfiguration.h>
-#include <Poco/MD5Engine.h>
-#include <Poco/StringTokenizer.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
