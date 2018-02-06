@@ -175,29 +175,21 @@ Block MongoDBBlockInputStream::readImpl()
             for (const auto idx : ext::range(0, size))
             {
                 const auto & name = description.names[idx];
-                const Poco::MongoDB::Document::Ptr doc = document;
+                const Poco::MongoDB::Element::Ptr value = document->get(name);
 
-                /// Handling nested keys, like document._id
-                Poco::StringTokenizer tokenizer(name, ".", Poco::StringTokenizer::Options::TOK_TRIM);
-                for (auto it = tokenizer.begin(); it != tokenizer.end(); it++)
+                if (value.isNull() || value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::NullValue>::TypeId)
                 {
-                    const Poco::MongoDB::Element::Ptr value = doc->get(*it);
-
-                    if (std::next(it) == tokenizer.end())
-                    {
-                        if (value.isNull() || value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::NullValue>::TypeId)
-                        {
-                            insertDefaultValue(*columns[idx], *description.sample_columns[idx]);
-                        }
-                        else
-                        {
-                            insertValue(*columns[idx], description.types[idx], *value, name);
-                        }
-                    }
-                    else if (value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::Document::Ptr>::TypeId)
-                    {
-                        doc = static_cast<const Poco::MongoDB::Document::Ptr &>(*value);
-                    }
+                    insertDefaultValue(*columns[idx], *description.sample_columns[idx]);
+                }
+                else if (value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::Document::Ptr>::TypeId)
+                {
+                    throw Exception{
+                            "Type mismatch, expected strings or scalar, got type id = " + toString(value->type()) +
+                                    " for column " + name, ErrorCodes::TYPE_MISMATCH};
+                }
+                else
+                {
+                    insertValue(*columns[idx], description.types[idx], *value, name);
                 }
             }
         }
