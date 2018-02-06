@@ -234,9 +234,11 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
     auto cursor = createCursor(db, collection, sample_block);
 
     Poco::MongoDB::Array::Ptr keys_array(new Poco::MongoDB::Array);
+    Poco::MongoDB::Document key = nullptr;
+
     for (const auto row_idx : requested_rows)
     {
-        auto & key = keys_array->addNewDocument(DB::toString(row_idx));
+        key = keys_array->addNewDocument(DB::toString(row_idx));
 
         for (const auto attr : ext::enumerate(*dict_struct.key))
         {
@@ -279,8 +281,7 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
     /// If more than one key we should use $or
     if (keys_array->size() == 1)
     {
-        Poco::MongoDB::Document::Ptr doc = keys_array->get(0);
-        cursor->query().selector().addElement(doc);
+        cursor->query().selector().addElement(key.get(DB::toString(0)));
     }
     else
     {
