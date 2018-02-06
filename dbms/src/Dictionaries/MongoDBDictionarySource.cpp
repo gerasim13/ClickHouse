@@ -283,9 +283,9 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
     }
     else
     {
+        auto & key = keys_array->addNewDocument(DB::toString(0));
         cursor->query().selector().addElement(key);
     }
-
 
     return std::make_shared<MongoDBBlockInputStream>(
             connection, std::move(cursor), sample_block, max_block_size);

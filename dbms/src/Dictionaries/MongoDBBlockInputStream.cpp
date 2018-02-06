@@ -183,7 +183,7 @@ Block MongoDBBlockInputStream::readImpl()
                 }
                 else if (value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::Document::Ptr>::TypeId)
                 {
-                    const auto & nested = static_cast<const Poco::MongoDB::ConcreteElement<Poco::MongoDB::Document::Ptr> &>(value).value();
+                    const auto nested = static_cast<const Poco::MongoDB::ConcreteElement<Poco::MongoDB::Document::Ptr>>(value).value();
 
                     /// Handling nested keys, like document._id
                     Poco::StringTokenizer tokenizer(name, ".", Poco::StringTokenizer::Options::TOK_TRIM);
@@ -191,7 +191,7 @@ Block MongoDBBlockInputStream::readImpl()
                     {
                         if (std::next(it) == tokenizer.end())
                         {
-                            insertValue(*columns[idx], description.types[idx], *nested, name);
+                            insertValue(*columns[idx], description.types[idx], nested, name);
                         }
                         else
                         {
