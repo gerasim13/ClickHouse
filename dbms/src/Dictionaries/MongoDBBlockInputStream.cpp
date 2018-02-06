@@ -100,7 +100,8 @@ namespace
 
             case ValueType::String:
             {
-                if (value.type() == Poco::MongoDB::ElementTraits<ObjectId::Ptr>::TypeId)
+                if (value.type() == Poco::MongoDB::ElementTraits<ObjectId::Ptr>::TypeId ||
+                    value.type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::NullValue>::TypeId)
                 {
                     std::string string_id = value.toString();
                     static_cast<ColumnString &>(column).insertDataWithTerminatingZero(string_id.data(), string_id.size() + 1);
@@ -177,15 +178,9 @@ Block MongoDBBlockInputStream::readImpl()
                 const auto & name = description.names[idx];
                 const Poco::MongoDB::Element::Ptr value = document->get(name);
 
-                if (value.isNull() || value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::NullValue>::TypeId)
+                if (value.isNull())
                 {
                     insertDefaultValue(*columns[idx], *description.sample_columns[idx]);
-                }
-                else if (value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::Document::Ptr>::TypeId)
-                {
-                    throw Exception{
-                            "Type mismatch, expected strings or scalar, got type id = " + toString(value->type()) +
-                                    " for column " + name, ErrorCodes::TYPE_MISMATCH};
                 }
                 else
                 {
