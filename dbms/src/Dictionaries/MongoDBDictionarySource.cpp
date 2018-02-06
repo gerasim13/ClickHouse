@@ -279,8 +279,8 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
     /// If more than one key we should use $or
     if (keys_array->size() == 1)
     {
-        auto key = static_cast<const Poco::MongoDB::ConcreteElement<Poco::MongoDB::Document::Ptr> &>(
-                DB::toString(0), keys_array->get(0)).value();
+        auto key = static_cast<Poco::MongoDB::ConcreteElement<Poco::MongoDB::Document::Ptr> &>(
+                keys_array->get(0)).value();
         cursor->query().selector().addElement(key);
     }
     else
