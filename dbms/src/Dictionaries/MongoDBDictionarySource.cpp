@@ -283,7 +283,7 @@ BlockInputStreamPtr MongoDBDictionarySource::loadKeys(
     }
     else
     {
-        cursor->query().selector().addElement(keys_array->get(0));
+        cursor->query().selector().addElement(key);
     }
 
 
