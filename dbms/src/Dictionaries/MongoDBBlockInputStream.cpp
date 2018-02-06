@@ -176,7 +176,7 @@ Block MongoDBBlockInputStream::readImpl()
             {
                 const auto & name = description.names[idx];
                 const Poco::MongoDB::Document::Ptr doc = document;
-                
+
                 /// Handling nested keys, like document._id
                 Poco::StringTokenizer tokenizer(name, ".", Poco::StringTokenizer::Options::TOK_TRIM);
                 for (auto it = tokenizer.begin(); it != tokenizer.end(); it++)
@@ -196,7 +196,7 @@ Block MongoDBBlockInputStream::readImpl()
                     }
                     else if (value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::Document::Ptr>::TypeId)
                     {
-                        doc = static_cast<const Poco::MongoDB::Document::Ptr>(value);
+                        doc = static_cast<const Poco::MongoDB::Document::Ptr &>(*value);
                     }
                 }
             }
