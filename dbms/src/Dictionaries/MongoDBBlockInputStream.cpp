@@ -175,33 +175,29 @@ Block MongoDBBlockInputStream::readImpl()
             for (const auto idx : ext::range(0, size))
             {
                 const auto & name = description.names[idx];
-                const Poco::MongoDB::Element::Ptr value = document->get(name);
-
-                if (value.isNull() || value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::NullValue>::TypeId)
+                const Poco::MongoDB::Document::Ptr doc = document;
+                
+                /// Handling nested keys, like document._id
+                Poco::StringTokenizer tokenizer(name, ".", Poco::StringTokenizer::Options::TOK_TRIM);
+                for (auto it = tokenizer.begin(); it != tokenizer.end(); it++)
                 {
-                    insertDefaultValue(*columns[idx], *description.sample_columns[idx]);
-                }
-                else if (value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::Document::Ptr>::TypeId)
-                {
-                    const auto nested = static_cast<const Poco::MongoDB::ConcreteElement<Poco::MongoDB::Document::Ptr>>(value).value();
+                    const Poco::MongoDB::Element::Ptr value = doc->get(*it);
 
-                    /// Handling nested keys, like document._id
-                    Poco::StringTokenizer tokenizer(name, ".", Poco::StringTokenizer::Options::TOK_TRIM);
-                    for (auto it = tokenizer.begin(); it != tokenizer.end(); it++)
+                    if (std::next(it) == tokenizer.end())
                     {
-                        if (std::next(it) == tokenizer.end())
+                        if (value.isNull() || value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::NullValue>::TypeId)
                         {
-                            insertValue(*columns[idx], description.types[idx], nested, name);
+                            insertDefaultValue(*columns[idx], *description.sample_columns[idx]);
                         }
                         else
                         {
-                            nested = nested->get(*it);
+                            insertValue(*columns[idx], description.types[idx], *value, name);
                         }
                     }
-                }
-                else
-                {
-                    insertValue(*columns[idx], description.types[idx], *value, name);
+                    else if (value->type() == Poco::MongoDB::ElementTraits<Poco::MongoDB::Document::Ptr>::TypeId)
+                    {
+                        doc = static_cast<const Poco::MongoDB::Document::Ptr>(value);
+                    }
                 }
             }
         }
